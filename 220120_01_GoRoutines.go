@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	sexyCount("nico")
+	go sexyCount("nico") //우어어어어어!!병렬처리된다!!!!!🤩go
 	sexyCount("anne")
 }
 

@@ -6,8 +6,9 @@ import (
 )
 
 func main() {
-	go sexyCount("nico") //우어어어어어!!병렬처리된다!!!!!🤩go
+	go sexyCount("nico") //🤩go는 1개만 ㅋㅋ(고루틴은 프로그램이 작동하는 동안만 유효하다. == 메인함수가 실행되는 동안만!)
 	sexyCount("anne")
+	time.Sleep(time.Second * 5) //고루틴이 5초만살아있고 이후엔 메인함수가 종료됨
 }
 
 func sexyCount(person string) {

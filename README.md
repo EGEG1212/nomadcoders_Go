@@ -17,7 +17,7 @@ import (
 func ExampleScrape() {
   // Request the HTML page.
   res, err := http.Get("http://metalsucks.net")
-  if err != nil {
+  if err != nil { //🧐에러체크
     log.Fatal(err)
   }
   defer res.Body.Close()
@@ -27,7 +27,7 @@ func ExampleScrape() {
 
   // Load the HTML document
   doc, err := goquery.NewDocumentFromReader(res.Body)
-  if err != nil {
+  if err != nil {  //🧐goquery document 만들때도 에러체크 ✔에러계속체크체크해야하기때문에, ☢checkErr함수만드는것이 편할것이다~~
     log.Fatal(err)
   }
 

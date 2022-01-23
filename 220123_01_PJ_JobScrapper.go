@@ -18,17 +18,24 @@ var baseURL string = "https://kr.indeed.com/jobs?q=python&limit=50"
 
 func main() {
 	var jobs []extractedJob
+	c := make(chan []extractedJob)//여러개니까 []
 	totalPages := getPages()
 	// fmt.Println(totalPages)
 	for i := 0; i < totalPages; i++ {
-		extractedJob := getPage(i)
-		jobs = append(jobs, extractedJob...) //2개의 배열을 합치려면 ... 쩜3개👌 만약 안찍으면 배열안에 배열을 넣는 모양이 됨..[[],[],[]]
+		//extractedJob := getPage(i)
+		go getPage(i, c)
+		//jobs = append(jobs, extractedJob...) //2개의 배열을 합치려면 ... 쩜3개👌 만약 안찍으면 배열안에 배열을 넣는 모양이 됨..[[],[],[]] ;; chan만들면서 삭제
 	}
+for i:=0; i<totalPages; i++ {
+	extractedJob := <- c
+	jobs = append(jobs, extractedJob...)
+}
+
 	writeJobs(jobs) //csv파일을만들어줌
 	fmt.Println("Done, extracted", Length(jobs) )
 }
 
-func getPage(page int) []extractedJob { //pane num 몇페이지인지 알아야하니까
+func getPage(page int,mainC chan<- []extractedJob){ //pane num 몇페이지인지 알아야하니까
 	var jobs = []extractedJob
 	c := make(chan extractedJob) //👩‍🚀채널로 전송할 값은 extractedJob이다.
 	//pageURL := baseURL + "&start=" + page*50 //string과 int의 조합은 아래와 같이 쓴다.
@@ -45,7 +52,7 @@ func getPage(page int) []extractedJob { //pane num 몇페이지인지 알아야�
 
 	searchCards := doc.Find(".tapItem")
 	searchCards.Each(func(i int, card *goquery.Selection){
-		//job := extractedJob(card, c) //이제 아래와같이 goroutain이 되었다.
+		//job := extractedJob(card, c) //이제 아래와같이 goroutine 되었다.
 		//jobs = append(jobs, job)
 		go extractedJob(card, c)
 	})
@@ -54,7 +61,8 @@ func getPage(page int) []extractedJob { //pane num 몇페이지인지 알아야�
 		jobs = append(jobs, job)
 	}
 
-	return job
+	//return jobs
+	mainC <- jobs
 
 }
 
@@ -79,24 +87,6 @@ func getPages(page int) []extractedJob {
 	return pages
 }
 
-func writeJobs(jobs []extractedJob){
-	file. err := os.Create("jobs.csv") //파일생성, 에러체크
-	checkErr(err)
-
-	w := csv.NewWriter(file) //쓰고
-	defer w.Flush()			//종료시점에서 Flush를 실행하도록 
-
-	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}
-	
-	wErr := w.Wirete(headers)
-	checkErr(wErr)
-
-	for _, job := range jobs {
-		jobSlice := []string{"https://kr.indeed.com/?vjk=" + job.id, job.title, job.location, jon.salary, job.summary}
-		jwErr := w.Wirete(jobSlice) //파일생성
-		checkErr(jwErr)
-	}
-}
 
 func extractedJob(card *goquery.Selection, c chan<- extractedJob)  {
 	id, _ := card.Attr("href")
@@ -119,7 +109,24 @@ func cleanString(str string) []string {
 }
 
 
+func writeJobs(jobs []extractedJob){
+	file. err := os.Create("jobs.csv") //파일생성, 에러체크
+	checkErr(err)
 
+	w := csv.NewWriter(file) //쓰고
+	defer w.Flush()			//종료시점에서 Flush를 실행하도록 
+
+	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}
+	
+	wErr := w.Wirete(headers)
+	checkErr(wErr)
+
+	for _, job := range jobs {  //#4.6 https://github.com/tsak/concurrent-csv-writer 라이브러리로 구현가능
+		jobSlice := []string{"https://kr.indeed.com/?vjk=" + job.id, job.title, job.location, jon.salary, job.summary}
+		jwErr := w.Wirete(jobSlice) //파일생성
+		checkErr(jwErr)
+	}
+}
 
 
 func checkErr(err error) {

@@ -28,7 +28,9 @@ func main() {
 	fmt.Println("Done, extracted", Length(jobs) )
 }
 
-func getPage(page int) { //pane num 몇페이지인지 알아야하니까
+func getPage(page int) []extractedJob { //pane num 몇페이지인지 알아야하니까
+	var jobs = []extractedJob
+	c := make(chan extractedJob) //👩‍🚀채널로 전송할 값은 extractedJob이다.
 	//pageURL := baseURL + "&start=" + page*50 //string과 int의 조합은 아래와 같이 쓴다.
 	pageURL := baseURL + "&start=" + strconv.Itoa(page*50)
 	fmt.Println("Requesting", pageURL)
@@ -43,53 +45,18 @@ func getPage(page int) { //pane num 몇페이지인지 알아야하니까
 
 	searchCards := doc.Find(".tapItem")
 	searchCards.Each(func(i int, card *goquery.Selection){
-		job := extractedJob(card)
-		jobs = append(jobs, job)
-		
+		//job := extractedJob(card, c) //이제 아래와같이 goroutain이 되었다.
+		//jobs = append(jobs, job)
+		go extractedJob(card, c)
 	})
+	for i:=0; i<searchCards.Length(); i++ { //카드당한번씩반복되기때문에 한페이지에 50카드씩 계속반복
+		job := <-c//채널에서 받은 메세지를 job변수에 저장
+		jobs = append(jobs, job)
+	}
+
 	return job
 
 }
-
-func writeJobs(jobs []extractedJob){
-	file. err := os.Create("jobs.csv") //파일생성, 에러체크
-	checkErr(err)
-
-	w := csv.NewWriter(file) //쓰고
-	defer w.Flush()			//종료시점에서 Flush를 실행하도록 
-
-	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}
-	
-	wErr := w.Wirete(headers)
-	checkErr(wErr)
-
-	for _, job := range jobs {
-		jobSlice := []string{"https://kr.indeed.com/?vjk=" + job.id, job.title, job.location, jon.salary, job.summary}
-		jwErr := w.Wirete(jobSlice) //파일생성
-		checkErr(jwErr)
-	}
-}
-
-func extractedJob(card *goquery.Selection) extractedJob {
-	id, _ := card.Attr("href")
-	title := cleanString(card.Find(".jobTitle>span").Text())
-	location := cleanString(card.Find(".companyLocation").Text())
-	salary := cleanString(card.Find(".salaryText").Text())
-	summary := cleanString(card.Find(".job-snippet").Text())
-	//fmt.Println(id, title, location, salary, summary) //😭윽..보기힘들어
-	return extractedJob{id:id, 
-						title:title, 
-						location:location, 
-						salary:salary, 
-						summary:summary}
-	
-}
-
-
-func cleanString(str string) []string {
-	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")//Fields는 string으로 된 배열을 반환한다.
-}
-
 
 func getPages(page int) []extractedJob {
 	var jobs = []extractedJob
@@ -111,6 +78,48 @@ func getPages(page int) []extractedJob {
 
 	return pages
 }
+
+func writeJobs(jobs []extractedJob){
+	file. err := os.Create("jobs.csv") //파일생성, 에러체크
+	checkErr(err)
+
+	w := csv.NewWriter(file) //쓰고
+	defer w.Flush()			//종료시점에서 Flush를 실행하도록 
+
+	headers := []string{"Link", "Title", "Location", "Salary", "Summary"}
+	
+	wErr := w.Wirete(headers)
+	checkErr(wErr)
+
+	for _, job := range jobs {
+		jobSlice := []string{"https://kr.indeed.com/?vjk=" + job.id, job.title, job.location, jon.salary, job.summary}
+		jwErr := w.Wirete(jobSlice) //파일생성
+		checkErr(jwErr)
+	}
+}
+
+func extractedJob(card *goquery.Selection, c chan<- extractedJob)  {
+	id, _ := card.Attr("href")
+	title := cleanString(card.Find(".jobTitle>span").Text())
+	location := cleanString(card.Find(".companyLocation").Text())
+	salary := cleanString(card.Find(".salaryText").Text())
+	summary := cleanString(card.Find(".job-snippet").Text())
+	//fmt.Println(id, title, location, salary, summary) //😭윽..보기힘들어
+	c <-  extractedJob{id:id,   //👩‍🚀return할 필요없고, 대신 채널에 값을 전송하기
+						title:title, 
+						location:location, 
+						salary:salary, 
+						summary:summary}
+	
+}
+
+
+func cleanString(str string) []string {
+	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")//Fields는 string으로 된 배열을 반환한다.
+}
+
+
+
 
 
 func checkErr(err error) {
